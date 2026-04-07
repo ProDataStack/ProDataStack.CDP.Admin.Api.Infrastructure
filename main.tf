@@ -43,7 +43,8 @@ data "azurerm_kubernetes_cluster" "prodatastack_aks" {
   resource_group_name = "prodatastack_shared"
 }
 
-# Federated credential for Workload Identity - links k8s service account to managed identity
+# Federated credential for Workload Identity — legacy cdp namespace
+# Keep during migration, remove after all services deploy to cdp-{env} namespaces
 resource "azurerm_federated_identity_credential" "admin_api" {
   name                = "cdp-admin-api-${var.ENVIRONMENT}"
   resource_group_name = azurerm_resource_group.cdp_admin_api.name
@@ -51,6 +52,16 @@ resource "azurerm_federated_identity_credential" "admin_api" {
   audience            = ["api://AzureADTokenExchange"]
   issuer              = data.azurerm_kubernetes_cluster.prodatastack_aks.oidc_issuer_url
   subject             = "system:serviceaccount:cdp:cdp-admin-api-serviceaccount"
+}
+
+# Federated credential for Workload Identity — environment-specific namespace
+resource "azurerm_federated_identity_credential" "admin_api_env" {
+  name                = "cdp-admin-api-${var.ENVIRONMENT}-ns"
+  resource_group_name = azurerm_resource_group.cdp_admin_api.name
+  parent_id           = azurerm_user_assigned_identity.cdp_admin_api_identity.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = data.azurerm_kubernetes_cluster.prodatastack_aks.oidc_issuer_url
+  subject             = "system:serviceaccount:cdp-${var.ENVIRONMENT}:cdp-admin-api-serviceaccount"
 }
 
 # AKS VNet/subnet data sources for Key Vault network rules
